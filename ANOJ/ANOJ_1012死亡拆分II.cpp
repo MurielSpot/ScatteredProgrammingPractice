@@ -85,4 +85,96 @@ int main() {
 	return 0;
 }
 
-//二.用随机选择算法
+//二.用随机选择算法:randSelect直接调用randPartition,而没有递归调用自己,下面还有一种递归调用自己的.
+#include<cstdio>
+#include<iostream>
+
+#include<cstdlib>
+#include<ctime> 
+#include<cmath>
+
+#include<vector>
+#include<stack>
+#include<map>
+#include<string>
+#include<algorithm>
+#include <exception>  
+using namespace std;
+
+#define IN 0
+#define P 0
+
+#define rep(i,n) for(int i=0;i<n;i++)
+#define pt(a) printf("%d",a)
+#define sc(a) scanf("%d",&a)
+
+const int MAXN = 10000010;
+
+int n;
+int num[MAXN];
+
+template<class T>
+void outputArr(T arr[], int left,int right) {
+	while (left <= right) {
+		cout << arr[left++] << ", ";
+	}
+	cout << endl;
+}
+
+int randPartition(int arr[], int left, int right) {//[].
+	int pivot = round(1.0*rand() / RAND_MAX * (right - left)) + left;
+	swap(arr[pivot], arr[left]);//别忘了交换.
+	int save = arr[left];
+	while (left < right) {
+		while (left<right&&arr[right]>save)right--;
+		arr[left] = arr[right];//注意不用arr[left] = arr[right--];!!!!!!!!!!!!
+		while (left < right&&arr[left] <= save)left++;//<=!!!!!!!!!而且这里不是arr[left] <= arr[pivot]!!!!!!!!!!!!!因为此时主元的位置已经改变pivot没有意义了!!!变量名起的不好,应该让元素值赋到pivot里,而不应该让pivot表示下标.
+		arr[right] = arr[left];
+	}
+	arr[left] = save;
+	return left;//返回相遇时的下标.
+}
+
+//index表示当前找到了第几大的数,由于index的大小顺序与它的下标是对应的,所以如果比kth小,就继续在[index+1,right]里划分,找大小在index+1到right次序里的数,大于或等于kth同理.
+void randSelect(int arr[], int left, int right, int kth) {//[].
+	if (left >= right)return;
+	int kIndex = kth;
+	int index = randPartition(arr, left, right);
+	while (left < right) {
+		if (index<kIndex) {
+			left = index + 1;
+			index = randPartition(arr, left, right);
+		}
+		else if (index == kIndex) {
+			return;
+		}
+		else {
+			right = index - 1;
+			index = randPartition(arr, left, right);
+		}
+	}
+	
+}
+
+int main() {
+	sc(n);
+	long long sum = 0;
+	rep(i, n) {
+		sc(num[i]);
+		sum += num[i];
+	}
+	randSelect(num, 0, n - 1, n / 2);
+	long long sum_first_half = 0;
+	rep(i, n / 2) {
+		sum_first_half += num[i];
+	}
+	if (n % 2) {
+		printf("1 %lld", sum - sum_first_half - num[n / 2] - sum_first_half + abs(num[n / 2]));
+	}
+	else {
+		printf("0 %lld", sum - sum_first_half - sum_first_half);
+	}
+	return 0;
+}
+
+//二.用随机选择算法:randSelect递归调用自己.
