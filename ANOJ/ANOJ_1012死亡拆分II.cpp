@@ -36,7 +36,7 @@ Source
 
 做法:
 1. 划分两个子集时,可以用nth_element函数.
-2. 也可以用随机选择算法，期望时间复杂度为 O(n).
+2. 也可以用随机选择算法，期望时间复杂度为 O(n).不用先成函数的话,做起来很繁琐,我调试了2h多小时吧,才把后面的两种算法写完.🙄
 */
 //一.用nth_element函数.
 #include<cstdio>
@@ -178,3 +178,71 @@ int main() {
 }
 
 //二.用随机选择算法:randSelect递归调用自己.
+#include<cstdio>
+#include<cstdlib>
+#include<cmath>
+#include<ctime>
+
+#include<iostream>//swap需要这个头文件. 
+using namespace std;
+
+#define rep(i,n) for(int i=0;i<n;i++)
+#define pt(a) printf("%d",a)
+#define sc(a) scanf("%d",&a)
+
+const int MAXN = 10000010;
+
+int n;
+int num[MAXN];
+
+int randPartition(int arr[], int left, int right) {//[].
+	int pivot = round(1.0*rand() / RAND_MAX * (right - left)) + left;
+	swap(arr[pivot], arr[left]);//别忘了交换.
+	int save = arr[left];
+	while (left < right) {
+		while (left<right&&arr[right]>save)right--;
+		arr[left] = arr[right];//注意不用arr[left] = arr[right--];!!!!!!!!!!!!
+		while (left < right&&arr[left] <= save)left++;
+		arr[right] = arr[left];
+	}
+	arr[left] = save;
+	return left;//返回相遇时的下标.
+}
+
+//注意这个函数的含义:是[left,right]内找第k大的,不是[0,n)内的.
+//所以下面的xth=randPartition(arr, left, right)中的xth不能代表[left,right]中第x大的元素,而仅是一个下标.
+void randSelect(int arr[], int left, int right,int kth) {//[].kth是从0开始算的.
+	if (left >= right)return;
+	//改动后的xth.
+	int xth=randPartition(arr, left, right)-left;//xth=randPartition(arr, left, right)-left+1中不需要+1.
+	if (xth < kth) {
+		randSelect(arr, left+xth+1, right,kth-xth-1);//kth在新的[left+xth+1,right]区间里为第kth-xth-1大.
+	}
+	else if(xth==kth){
+		return;
+	}
+	else {
+		randSelect(arr, left, left + xth - 1,kth);
+	}
+}
+
+int main() {
+	sc(n);
+	long long sum = 0;
+	rep(i, n) {
+		sc(num[i]);
+		sum += num[i];
+	}
+	randSelect(num, 0, n - 1, n / 2);
+	long long sum_first_half = 0;
+	rep(i, n / 2) {
+		sum_first_half += num[i];
+	}
+	if (n % 2) {
+		printf("1 %lld", sum - sum_first_half - num[n / 2] - sum_first_half + abs(num[n / 2]));
+	}
+	else {
+		printf("0 %lld", sum - sum_first_half - sum_first_half);
+	}
+	return 0;
+}
