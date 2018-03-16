@@ -60,7 +60,134 @@ Shoutmon
 Source
 18浙大考研机试模拟赛
 ---------------------------------------------------------------------------------------
-难度：；时长：h；ac：次。
+难度：5；时长：2h以上；ac：7,8,9次，提交了很多次，有的通过有的没通过，有的代码出现了莫名其妙的错误，和正确的代码只有轻微的差别，但并不清楚到底怎么错了。
 
 注意事项:
+1. 正向反向图的0位都要讲pSpace赋值给它们，忘记g_inverted[0] = pSpace;这一句出了错。
+2. 思路要正确，到k的最短距离，可以用一个超级源点连接所有的p，再通过最短路径的算法求出。但是求k到p的最短距离，不能用超级源点连接k，然后用最短路径算法，因为此时p的距离指的是p到k群体的最近距离，而具体的某个k到p群体的最短距离并不能确定。
+所以应该逆向建图，即把所有路径方向都调转，则此时k到p的距离已经成了p到k的距离，再次用最短路径，则每个k的最短距离存的都是到p这个群体的最近的距离，直接累加所有k即可。
+3. 题目的意思是所有的p空间都是连通的。且最后一次打完怪，不用回到p，所以这段距离如果多算了，需要去除，也就是说去除一个某个k到p群体的最长的那个距离，相当于这个k最后消灭。
+4. 最短路径算法需要用堆优化，不然会超时。堆优化可以用优先队列。
+
+补充：
+1. 优先队列的使用：
+priority_queue默认为大顶堆，即堆顶元素为堆中最大元素。如果我们想要用小顶堆的话需要增加使用两个参数：
+priority_queue<int, vector<int>, greater<int> > q;  // 小顶堆  
+priority_queue<int, vector<int>, less<int> > q;     // 大顶堆  
 */
+#include <cstdio>
+#include<iostream>
+#include <cstring>
+#include <vector>
+#include <functional>//优先队列里的greater需要它.
+#include <queue>//用优先队列需要它.
+#include<utility>
+using namespace std;
+
+typedef long long ll;
+
+const int MAXN = 1000005;
+const ll INF = 100000000000000000;
+
+#define rep(i,j,n) for(int i=j;i<n;i++)
+#define sc(a) scanf("%d",&a)
+
+int n;//空间数。
+int m;//通道数.
+int p;//初始空间编号.
+int k;//分身空间编号.
+
+struct info {
+	int v1, v2;
+	int w;
+	info() {
+		v1 = v2 = w = -1;
+	}
+	info(int from, int to, int weight) {
+		v1 = from; v2 = to;
+		w = weight;
+	}
+};
+
+vector<info> g_posi[MAXN];
+vector<info> g_inverted[MAXN];
+vector<int> kSpace;
+vector<info> pSpace; 
+
+bool vis[MAXN];
+vector<ll> dist(MAXN);
+
+void dijkstra(int now,vector<info> g[]) {
+	priority_queue<pair<ll,int>, vector<pair<ll,int> >, greater<pair<ll,int> > > q;//pair里是距离和编号.
+	fill(dist.begin(), dist.end(), INF);
+	dist[now] = 0;
+	q.push(make_pair(0,now));
+	ll minDist = INF;
+	while (!q.empty()) {
+		now = q.top().second;
+		minDist = q.top().first;//堆顶是当前距离最小的结点.
+		q.pop();
+		if (dist[now] >= minDist && dist[now]<INF) {//mindist是当前最小距离，比它更小的结点肯定已经是最小距离，则它的相邻结点之前已经更新过，不需要更新了！这是我的理解，可能有误。
+			for (int j = 0; j < g[now].size(); j++) {//以now为中介更新其它结点值.
+				int v = g[now][j].v2;
+				if (dist[v] > dist[now] + g[now][j].w) {
+					dist[v] = dist[now] + g[now][j].w;
+					q.push(make_pair(dist[v], v));
+				}
+			}
+		}
+	}
+}
+int main() {
+	cin >> n >> m >> p >> k;
+	rep(i, 0, p) {
+		int tmp; sc(tmp);
+		pSpace.push_back(info(0,tmp,0));
+    //不考虑p到0点也可到达，只考虑0到p可达，并不影响结果。
+//		g_posi[0].push_back(info(0,tmp,0));
+//		g_posi[tmp].push_back(info(tmp,0,0));
+//		g_inverted[0].push_back(info(0,tmp,0));
+//		g_inverted[tmp].push_back(info(tmp,0,0));
+	}
+	rep(i, 0, k) {
+		int tmp; sc(tmp);
+		kSpace.push_back(tmp);
+	}
+	rep(i, 0, m) {
+		int u, v;
+		ll w;
+		scanf("%d%d%d", &u, &v, &w);
+		g_posi[u].push_back(info(u, v, w));
+		g_inverted[v].push_back(info(v, u, w));//反向建图。
+	}
+	//将0看作源点,连接所有p,计算处0到所有顶点的距离也就计算出了p到k的最短距离.
+	g_posi[0]=pSpace;
+	dijkstra(0,g_posi);
+	ll ans = 0;
+	rep(i, 0, kSpace.size()) {
+//		if (dist[k_v] != INF) {
+//			ans += dist[k_v];
+//		}
+		ans += dist[kSpace[i]];
+	}
+	g_inverted[0]=pSpace;
+	dijkstra(0,g_inverted);
+	ll subtract = 0;//因为消灭最后一个洞穴后不需要返回p,所以找一个从k出发到p最远的,把这个距离减去.
+	rep(i, 0, kSpace.size()) {
+		int k_v = kSpace[i];
+    //下面这个注释，以及上面kSpace的里的那个注释，一用注释里的代替不再注释里的语句，也就是说，多判断一次dist的值是否是INF，即是否有效，就会出错，把判断是否等于INF的语句去掉，就能通过。不知道为什么
+//		if (dist[k_v] != INF) {
+//			ans += dist[k_v];
+//			if (dist[k_v] > subtract) {
+//				subtract = dist[k_v];
+//			}
+//		}
+		ans += dist[k_v];
+		if (dist[k_v] > subtract) {
+			subtract = dist[k_v];
+		}
+	}
+	ans -= subtract;
+	printf("%lld", ans);
+	return 0;
+}
